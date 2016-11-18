@@ -168,3 +168,5 @@
 #import "GPUImageColourFASTFeatureDetector.h"
 #import "GPUImageColourFASTSamplingOperation.h"
 
+// customize
+#import "MultiFaceFilter.h"

@@ -22,7 +22,8 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
 /**
  A GPUImageOutput that provides frames from either camera
 */
-@interface GPUImageVideoCamera : GPUImageOutput <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate>
+@interface GPUImageVideoCamera : GPUImageOutput <AVCaptureVideoDataOutputSampleBufferDelegate,
+AVCaptureAudioDataOutputSampleBufferDelegate>
 {
     NSUInteger numberOfFramesCaptured;
     CGFloat totalFrameTimeDuringCapture;
@@ -32,11 +33,13 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
     AVCaptureDevice *_microphone;
     AVCaptureDeviceInput *videoInput;
 	AVCaptureVideoDataOutput *videoOutput;
+    AVCaptureMetadataOutput *metadataOutput;
 
     BOOL capturePaused;
     GPUImageRotationMode outputRotation, internalRotation;
     dispatch_semaphore_t frameRenderingSemaphore;
-        
+    dispatch_queue_t metadataQueue;
+    
     BOOL captureAsYUV;
     GLuint luminanceTexture, chrominanceTexture;
 
@@ -152,5 +155,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] );
 
 + (BOOL)isBackFacingCameraPresent;
 + (BOOL)isFrontFacingCameraPresent;
+
+@property (readwrite, strong) id<AVCaptureMetadataOutputObjectsDelegate> faceDetectionDelegate;
 
 @end

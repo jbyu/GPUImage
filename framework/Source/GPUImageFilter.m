@@ -289,6 +289,21 @@ NSString *const kGPUImagePassthroughFragmentShaderString = SHADER_STRING
     }
 }
 
+- (void)draw:(const GLfloat *)vertices textureCoordinates:(const GLfloat *)textureCoordinates
+{
+    [GPUImageContext setActiveShaderProgram:filterProgram];
+    
+    [self setUniformsForProgramAtIndex:0];
+    
+    glActiveTexture(GL_TEXTURE2);
+    //glBindTexture(GL_TEXTURE_2D, [firstInputFramebuffer texture]);
+    glUniform1i(filterInputTextureUniform, 2);
+    glVertexAttribPointer(filterPositionAttribute, 2, GL_FLOAT, 0, 0, vertices);
+    glVertexAttribPointer(filterTextureCoordinateAttribute, 2, GL_FLOAT, 0, 0, textureCoordinates);
+    
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
 - (void)renderToTextureWithVertices:(const GLfloat *)vertices textureCoordinates:(const GLfloat *)textureCoordinates;
 {
     if (self.preventRendering)

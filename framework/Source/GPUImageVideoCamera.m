@@ -87,7 +87,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     capturePaused = NO;
     outputRotation = kGPUImageNoRotation;
     internalRotation = kGPUImageNoRotation;
-    captureAsYUV = YES;
+    captureAsYUV = NO;
     _preferredConversion = kColorConversion709;
     
 	// Grab the back-facing or front-facing camera
@@ -120,7 +120,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
 	
 	// Add the video frame output	
 	videoOutput = [[AVCaptureVideoDataOutput alloc] init];
-	[videoOutput setAlwaysDiscardsLateVideoFrames:NO];
+	[videoOutput setAlwaysDiscardsLateVideoFrames:YES];
     
 //    if (captureAsYUV && [GPUImageContext deviceSupportsRedTextures])
     if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
@@ -214,7 +214,19 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
 		NSLog(@"Couldn't add video output");
         return nil;
 	}
-    
+/*
+    for (AVCaptureConnection *connection in videoOutput.connections)
+    {
+        if (connection.supportsVideoOrientation)
+            connection.videoOrientation = AVCaptureVideoOrientationPortrait;
+        if (connection.supportsVideoMirroring)
+            connection.videoMirrored = true;
+    }
+*/
+    // get the output for doing face detection.
+    //[[videoOutput connectionWithMediaType:AVMediaTypeVideo] setEnabled:YES];
+    metadataQueue = dispatch_queue_create("metadataQueue", DISPATCH_QUEUE_SERIAL);
+   
 	_captureSessionPreset = sessionPreset;
     [_captureSession setSessionPreset:_captureSessionPreset];
 
@@ -229,6 +241,22 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     [_captureSession commitConfiguration];
     
 	return self;
+}
+
+- (void) setFaceDetectionDelegate:(id<AVCaptureMetadataOutputObjectsDelegate>)faceDetectionDelegate {
+    metadataOutput = [[AVCaptureMetadataOutput alloc] init];
+    [metadataOutput setMetadataObjectsDelegate:faceDetectionDelegate queue:metadataQueue];
+    [_captureSession addOutput:metadataOutput];
+
+    NSArray* supportTypes = metadataOutput.availableMetadataObjectTypes;
+    if( [supportTypes containsObject:AVMetadataObjectTypeFace] )
+        [metadataOutput setMetadataObjectTypes:[NSArray arrayWithObject:AVMetadataObjectTypeFace]];
+    else
+        NSLog( @"NOT Support AVMetadataObjectTypeFace!" );
+}
+
+- (id<AVCaptureMetadataOutputObjectsDelegate>)faceDetectionDelegate {
+    return [metadataOutput metadataObjectsDelegate];
 }
 
 - (GPUImageFramebuffer *)framebufferForOutput;
@@ -249,6 +277,10 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
     if (frameRenderingSemaphore != NULL)
     {
         dispatch_release(frameRenderingSemaphore);
+    }
+    if (metadataQueue != NULL)
+    {
+        dispatch_release(metadataQueue);
     }
 #endif
 }
@@ -924,7 +956,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
         
         //    From the iOS 5.0 release notes:
         //    In previous iOS versions, the front-facing camera would always deliver buffers in AVCaptureVideoOrientationLandscapeLeft and the back-facing camera would always deliver buffers in AVCaptureVideoOrientationLandscapeRight.
-        
+#if 1
         if (captureAsYUV && [GPUImageContext supportsFastTextureUpload])
         {
             outputRotation = kGPUImageNoRotation;
@@ -1032,7 +1064,7 @@ void setColorConversion709( GLfloat conversionMatrix[9] )
                 }
             }
         }
-        
+#endif
         for (id<GPUImageInput> currentTarget in targets)
         {
             NSInteger indexOfObject = [targets indexOfObject:currentTarget];
