@@ -1,6 +1,18 @@
 #import "MultiFaceFilter.h"
 #import <AVFoundation/AVFoundation.h>
 
+
+
+#define DEGREES_TO_RADIANS(x) (M_PI * x / 180.0)
+const NSUInteger MAXIMUM_FACES = 8;
+
+typedef struct _FaceVertex {
+    GLfloat x, y, u, v;
+} FaceVertex;
+
+FaceVertex faceVertices[4 * MAXIMUM_FACES];
+CGAffineTransform matrix;
+
 @implementation MultiFaceFilter
 
 @synthesize mirror;
@@ -8,11 +20,6 @@
 #pragma mark -
 #pragma mark Initialization and teardown
 
-
-#define DEGREES_TO_RADIANS(x) (M_PI * x / 180.0)
-const int MAXIMUM_FACES = 8;
-CGPoint faceVertices[8*MAXIMUM_FACES];
-CGAffineTransform matrix;
 
 - (id)init;
 {
@@ -75,35 +82,75 @@ CGAffineTransform matrix;
     if (MAXIMUM_FACES < face_count)
         face_count = MAXIMUM_FACES;
     
-    for (int i = 0; i < face_count; ++i) {
+    
+    FaceVertex *vtx = faceVertices;
+    for (NSUInteger i = 0; i < face_count; ++i) {
         //NSLog( @"[metadataObjects count] = %d", [metadataObjects count] );
         AVMetadataFaceObject *face = [metadataObjects objectAtIndex:i];
         CGRect r = [face bounds];
-        
+#if 1
         if (mirror) {
             r.origin.y = 1 - r.origin.y;
             r.size.height = -r.size.height;
         }
-        int idx = i * 8;
+        NSUInteger idx = i * 4;
+        CGPoint pos,tex;
         CGPoint pt = r.origin;
-        faceVertices[idx+0] = CGPointApplyAffineTransform(pt, matrix);
-        faceVertices[idx+4] = [self rotatedTexture:pt forRotation:inputRotation];
-        
+        pos = CGPointApplyAffineTransform(pt, matrix);
+        tex = [self rotatedTexture:pt forRotation:inputRotation];
+        vtx->x = pos.x; vtx->y = pos.y;
+        vtx->u = tex.x; vtx->v = tex.y;
+        ++vtx;
+
         pt.x = r.origin.x + r.size.width;
         pt.y = r.origin.y;
-        faceVertices[idx+1] = CGPointApplyAffineTransform(pt, matrix);
-        faceVertices[idx+5] = [self rotatedTexture:pt forRotation:inputRotation];
+        pos = CGPointApplyAffineTransform(pt, matrix);
+        tex = [self rotatedTexture:pt forRotation:inputRotation];
+        vtx->x = pos.x; vtx->y = pos.y;
+        vtx->u = tex.x; vtx->v = tex.y;
+        ++vtx;
 
         pt.x = r.origin.x;
         pt.y = r.origin.y + r.size.height;
-        faceVertices[idx+2] = CGPointApplyAffineTransform(pt, matrix);
-        faceVertices[idx+6] = [self rotatedTexture:pt forRotation:inputRotation];
+        pos = CGPointApplyAffineTransform(pt, matrix);
+        tex = [self rotatedTexture:pt forRotation:inputRotation];
+        vtx->x = pos.x; vtx->y = pos.y;
+        vtx->u = tex.x; vtx->v = tex.y;
+        ++vtx;
 
         pt.x = r.origin.x + r.size.width;
         pt.y = r.origin.y + r.size.height;
-        faceVertices[idx+3] = CGPointApplyAffineTransform(pt, matrix);
-        faceVertices[idx+7] = [self rotatedTexture:pt forRotation:inputRotation];
+        pos = CGPointApplyAffineTransform(pt, matrix);
+        tex = [self rotatedTexture:pt forRotation:inputRotation];
+        vtx->x = pos.x; vtx->y = pos.y;
+        vtx->u = tex.x; vtx->v = tex.y;
+        ++vtx;
+#else
+        CGPoint pt = r.origin;
+        vtx->x = pt.x; vtx->y = pt.y;
+        vtx->u = pt.x; vtx->v = pt.y;
+        ++vtx;
+
+        pt.x = r.origin.x + r.size.width;
+        pt.y = r.origin.y;
+        vtx->x = pt.x; vtx->y = pt.y;
+        vtx->u = pt.x; vtx->v = pt.y;
+        ++vtx;
+        
+        pt.x = r.origin.x;
+        pt.y = r.origin.y + r.size.height;
+        vtx->x = pt.x; vtx->y = pt.y;
+        vtx->u = pt.x; vtx->v = pt.y;
+        ++vtx;
+        
+        pt.x = r.origin.x + r.size.width;
+        pt.y = r.origin.y + r.size.height;
+        vtx->x = pt.x; vtx->y = pt.y;
+        vtx->u = pt.x; vtx->v = pt.y;
+        ++vtx;
+#endif
     }
+
 }
 
 #pragma mark -
@@ -145,19 +192,17 @@ CGAffineTransform matrix;
     
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, [firstInputFramebuffer texture]);
-    
     glUniform1i(filterInputTextureUniform, 2);
-    
+
     glVertexAttribPointer(filterPositionAttribute, 2, GL_FLOAT, 0, 0, vertices);
     glVertexAttribPointer(filterTextureCoordinateAttribute, 2, GL_FLOAT, 0, 0, textureCoordinates);
-    
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    
+
     for (GPUImageFilter *currentFilter in filters)
     {
-        for (int i = 0; i < face_count; ++i) {
-            CGPoint *ptr = (faceVertices + i * 8);
-            [currentFilter draw:(GLfloat*)ptr textureCoordinates:(GLfloat*)(ptr+4)];
+        for (NSUInteger i = 0; i < face_count; ++i) {
+            FaceVertex *ptr = faceVertices + i*4;
+            [currentFilter draw:(GLfloat*)&ptr->x textureCoordinates:(GLfloat*)&ptr->u withStride:sizeof(FaceVertex)];
         }
     }
     

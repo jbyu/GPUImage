@@ -3,7 +3,7 @@
 @interface MultiFaceFilter<AVCaptureMetadataOutputObjectsDelegate> : GPUImageFilter
 {
     NSMutableArray *filters;
-    int face_count;
+    NSUInteger face_count;
 }
 
 @property(readwrite, nonatomic) BOOL mirror;

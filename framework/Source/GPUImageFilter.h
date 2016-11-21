@@ -131,6 +131,6 @@ typedef struct GPUMatrix3x3 GPUMatrix3x3;
 - (void)setAndExecuteUniformStateCallbackAtIndex:(GLint)uniform forProgram:(GLProgram *)shaderProgram toBlock:(dispatch_block_t)uniformStateBlock;
 - (void)setUniformsForProgramAtIndex:(NSUInteger)programIndex;
 
-- (void)draw:(const GLfloat *)vertices textureCoordinates:(const GLfloat *)textureCoordinates;
+- (void)draw:(const GLfloat *)vertices textureCoordinates:(const GLfloat *)textureCoordinates withStride:(GLsizei)stride;
 
 @end
